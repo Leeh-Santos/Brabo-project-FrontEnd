@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FundMe - Decentralized Funding Platform</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .logo {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 0%, #f0f9ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.2rem;
+            font-weight: 300;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+
+        .card-title {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-label {
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            color: white;
+            font-size: 1rem;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+        }
+
+        .input-field::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 16px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #fff 0%, #f0f9ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .status.connected {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .status.disconnected {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .funders-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+
+        .funder-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .funder-address {
+            color: rgba(255, 255, 255, 0.9);
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+        }
+
+        .funder-amount {
+            color: #22c55e;
+            font-weight: 600;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .logo {
+                font-size: 2rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: rgba(34, 197, 94, 0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        .notification.error {
+            background: rgba(239, 68, 68, 0.9);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="logo">💎 FundMe</h1>
+            <p class="subtitle">Decentralized Funding Platform • Powered by Ethereum</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalBalance">0.00</div>
+                <div class="stat-label">Total Balance (ETH)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalFunders">0</div>
+                <div class="stat-label">Total Funders</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="myContribution">0.00</div>
+                <div class="stat-label">My Contribution (ETH)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="ethPrice">$0</div>
+                <div class="stat-label">ETH Price (USD)</div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div class="card">
+                <div class="card-title">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M12 2L2 7v10c0 5.55 3.84 9.739 9 11 5.16-1.261 9-5.45 9-11V7l-10-5z"/>
+                    </svg>
+                    Fund the Project
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Amount to Fund (ETH)</label>
+                    <input type="number" id="fundAmount" class="input-field" placeholder="0.01" step="0.001">
+                </div>
+                <button id="fundBtn" class="btn">
+                    💰 Fund Project
+                </button>
+                <div id="walletStatus" class="status disconnected">
+                    Wallet Disconnected
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M17 2H7C5.9 2 5 2.9 5 4v16l7-3 7 3V4c0-1.1-.9-2-2-2z"/>
+                    </svg>
+                    Owner Actions
+                </div>
+                <div class="input-group">
+                    <button id="withdrawBtn" class="btn" disabled>
+                        💸 Withdraw Funds
+                    </button>
+                </div>
+                <div class="input-group">
+                    <button id="cheapWithdrawBtn" class="btn" disabled>
+                        ⚡ Cheap Withdraw
+                    </button>
+                </div>
+                <div class="input-group">
+                    <button id="connectBtn" class="btn">
+                        🔗 Connect MetaMask
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zM4 18v-1c0-1.1.9-2 2-2h.5l.5-2H6c-.83 0-1.5-.67-1.5-1.5S5.17 10 6 10h1l1-4h2l-1 4h2l1-4h2l-1 4h.5c.83 0 1.5.67 1.5 1.5S13.33 15 12.5 15H12l-.5 2H12c1.1 0 2 .9 2 2v1H4z"/>
+                </svg>
+                Recent Funders
+            </div>
+            <div id="fundersList" class="funders-list">
+                <div style="text-align: center; color: rgba(255, 255, 255, 0.6); padding: 2rem;">
+                    Connect wallet to view funders
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <script>
+        // Contract ABI (simplified for demo)
+        const contractABI = [
+            "function fund() public payable",
+            "function withdraw() public",
+            "function cheapwithdraw() public", 
+            "function getOwner() external view returns (address)",
+            "function getHowMuchDudeFunded(address) external view returns (uint256)",
+            "function getFunders(uint256) external view returns (address)",
+            "event Funded(address indexed funder, uint256 amount)"
+        ];
+
+        // Replace with your actual contract address
+        const CONTRACT_ADDRESS = "0x1234567890123456789012345678901234567890";
+
+        let provider;
+        let signer;
+        let contract;
+        let userAccount;
+        let isOwner = false;
+
+        // DOM elements
+        const connectBtn = document.getElementById('connectBtn');
+        const fundBtn = document.getElementById('fundBtn');
+        const withdrawBtn = document.getElementById('withdrawBtn');
+        const cheapWithdrawBtn = document.getElementById('cheapWithdrawBtn');
+        const fundAmountInput = document.getElementById('fundAmount');
+        const walletStatus = document.getElementById('walletStatus');
+        const totalBalance = document.getElementById('totalBalance');
+        const totalFunders = document.getElementById('totalFunders');
+        const myContribution = document.getElementById('myContribution');
+        const ethPrice = document.getElementById('ethPrice');
+        const fundersList = document.getElementById('fundersList');
+
+        // Connect wallet
+        connectBtn.addEventListener('click', async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    provider = new ethers.BrowserProvider(window.ethereum);
+                    signer = await provider.getSigner();
+                    userAccount = await signer.getAddress();
+                    
+                    // For demo purposes, we'll create a mock contract
+                    // In reality, you'd use: contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, signer);
+                    
+                    updateWalletStatus(true);
+                    await updateStats();
+                    showNotification('Wallet connected successfully!', 'success');
+                } catch (error) {
+                    showNotification('Failed to connect wallet', 'error');
+                }
+            } else {
+                showNotification('Please install MetaMask!', 'error');
+            }
+        });
+
+        // Fund project
+        fundBtn.addEventListener('click', async () => {
+            const amount = fundAmountInput.value;
+            if (!amount || amount <= 0) {
+                showNotification('Please enter a valid amount', 'error');
+                return;
+            }
+
+            try {
+                fundBtn.innerHTML = '<div class="loading"></div> Funding...';
+                fundBtn.disabled = true;
+
+                // Mock transaction for demo
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                showNotification(`Successfully funded ${amount} ETH!`, 'success');
+                fundAmountInput.value = '';
+                await updateStats();
+            } catch (error) {
+                showNotification('Transaction failed', 'error');
+            } finally {
+                fundBtn.innerHTML = '💰 Fund Project';
+                fundBtn.disabled = false;
+            }
+        });
+
+        // Withdraw functions
+        withdrawBtn.addEventListener('click', async () => {
+            if (!isOwner) {
+                showNotification('Only owner can withdraw', 'error');
+                return;
+            }
+
+            try {
+                withdrawBtn.innerHTML = '<div class="loading"></div> Withdrawing...';
+                withdrawBtn.disabled = true;
+
+                // Mock transaction for demo
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                showNotification('Funds withdrawn successfully!', 'success');
+                await updateStats();
+            } catch (error) {
+                showNotification('Withdrawal failed', 'error');
+            } finally {
+                withdrawBtn.innerHTML = '💸 Withdraw Funds';
+                withdrawBtn.disabled = false;
+            }
+        });
+
+        cheapWithdrawBtn.addEventListener('click', async () => {
+            if (!isOwner) {
+                showNotification('Only owner can withdraw', 'error');
+                return;
+            }
+
+            try {
+                cheapWithdrawBtn.innerHTML = '<div class="loading"></div> Withdrawing...';
+                cheapWithdrawBtn.disabled = true;
+
+                // Mock transaction for demo
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                showNotification('Cheap withdrawal successful!', 'success');
+                await updateStats();
+            } catch (error) {
+                showNotification('Withdrawal failed', 'error');
+            } finally {
+                cheapWithdrawBtn.innerHTML = '⚡ Cheap Withdraw';
+                cheapWithdrawBtn.disabled = false;
+            }
+        });
+
+        function updateWalletStatus(connected) {
+            if (connected) {
+                walletStatus.textContent = `Connected: ${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
+                walletStatus.className = 'status connected';
+                connectBtn.textContent = '✅ Connected';
+                connectBtn.disabled = true;
+                
+                // Check if user is owner (mock check)
+                isOwner = Math.random() > 0.5; // 50% chance for demo
+                if (isOwner) {
+                    withdrawBtn.disabled = false;
+                    cheapWithdrawBtn.disabled = false;
+                }
+            } else {
+                walletStatus.textContent = 'Wallet Disconnected';
+                walletStatus.className = 'status disconnected';
+                connectBtn.textContent = '🔗 Connect MetaMask';
+                connectBtn.disabled = false;
+            }
+        }
+
+        async function updateStats() {
+            // Mock data for demo
+            const mockBalance = (Math.random() * 10).toFixed(2);
+            const mockFunders = Math.floor(Math.random() * 50) + 1;
+            const mockContribution = (Math.random() * 2).toFixed(3);
+            const mockEthPrice = (2000 + Math.random() * 1000).toFixed(0);
+
+            totalBalance.textContent = mockBalance;
+            totalFunders.textContent = mockFunders;
+            myContribution.textContent = mockContribution;
+            ethPrice.textContent = `$${mockEthPrice}`;
+
+            // Update funders list
+            updateFundersList(mockFunders);
+        }
+
+        function updateFundersList(count) {
+            fundersList.innerHTML = '';
+            
+            for (let i = 0; i < Math.min(count, 10); i++) {
+                const funderItem = document.createElement('div');
+                funderItem.className = 'funder-item';
+                
+                const mockAddress = '0x' + Math.random().toString(16).substr(2, 40);
+                const mockAmount = (Math.random() * 1).toFixed(3);
+                
+                funderItem.innerHTML = `
+                    <div class="funder-address">${mockAddress.slice(0, 10)}...${mockAddress.slice(-8)}</div>
+                    <div class="funder-amount">${mockAmount} ETH</div>
+                `;
+                
+                fundersList.appendChild(funderItem);
+            }
+        }
+
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Initialize with mock data
+        updateStats();
+        
+        // Simulate real-time updates
+        setInterval(updateStats, 30000);
+    </script>
+</body>
+</html>
