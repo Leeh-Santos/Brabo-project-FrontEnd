@@ -775,30 +775,18 @@
 
     <div class="dots-pattern dots-2"></div>
 
-    <script>
-        // Contract addresses and ABI (you'll need to update these)
-        const FUNDME_ADDRESS = "YOUR_FUNDME_CONTRACT_ADDRESS";
-        const NFT_ADDRESS = "YOUR_NFT_CONTRACT_ADDRESS";
-        const PICA_TOKEN_ADDRESS = "YOUR_PICA_TOKEN_ADDRESS";
+    <script type="module">
+        // Import constants from external file
+        import { 
+            CONTRACT_ADDRESSES, 
+            FUNDME_ABI, 
+            NFT_ABI, 
+            PICA_TOKEN_ABI,
+            NFT_TIERS,
+            ETH_PRICE_PLACEHOLDER 
+        } from './constants.js';
 
-        // Simplified ABIs
-        const FUNDME_ABI = [
-            "function fund() payable",
-            "function getHowMuchDudeFundedInUsd(address) view returns (uint256)",
-            "function getHowMuchDudeFundedInUsdActual(address) view returns (uint256)",
-            "function getFunders(uint256) view returns (address)",
-            "function getPicaTokenBalance() view returns (uint256)",
-            "function calculatePicaTokenReward(uint256) view returns (uint256)",
-            "event Funded(address indexed funder, uint256 ethAmount, uint256 picaTokensAwarded)",
-            "event NftMinted(address indexed recipient)",
-            "event TierUpgraded(address indexed user, uint256 totalFundingUsd)"
-        ];
-
-        const NFT_ABI = [
-            "function getTotalSupply() view returns (uint256)",
-            "function getTokenIdByOwner(address) view returns (uint256)"
-        ];
-
+        // Contract instances
         let provider, signer, fundMeContract, nftContract, userAddress;
 
         // Smooth scroll
@@ -825,8 +813,8 @@
                 document.getElementById('connectBtn').classList.add('connected');
 
                 // Initialize contracts
-                fundMeContract = new ethers.Contract(FUNDME_ADDRESS, FUNDME_ABI, signer);
-                nftContract = new ethers.Contract(NFT_ADDRESS, NFT_ABI, signer);
+                fundMeContract = new ethers.Contract(CONTRACT_ADDRESSES.FUNDME, FUNDME_ABI, signer);
+                nftContract = new ethers.Contract(CONTRACT_ADDRESSES.NFT, NFT_ABI, signer);
 
                 // Enable fund button
                 document.getElementById('fundBtn').textContent = 'Fund Project';
@@ -892,7 +880,7 @@
                     ethers.utils.formatEther(picaBalance).slice(0, 8);
 
                 // Get total raised
-                const contractBalance = await provider.getBalance(FUNDME_ADDRESS);
+                const contractBalance = await provider.getBalance(CONTRACT_ADDRESSES.FUNDME);
                 const ethAmount = ethers.utils.formatEther(contractBalance).slice(0, 6);
                 document.getElementById('totalRaised').textContent = ethAmount + ' ETH';
                 document.getElementById('totalRaisedCard').textContent = ethAmount + ' ETH';
@@ -977,12 +965,12 @@
                 const picaReward = await fundMeContract.calculatePicaTokenReward(ethValue);
                 
                 // Estimate ETH price
-                const ethPrice = 2000; // Placeholder
+                const ethPrice = ETH_PRICE_PLACEHOLDER; // From constants
                 const usdValue = parseFloat(ethAmount) * ethPrice;
 
                 document.getElementById('picaReward').textContent = 
                     ethers.utils.formatEther(picaReward).slice(0, 10) + ' PICA';
-                document.getElementById('usdValue').textContent = ' + usdValue.toFixed(2);
+                document.getElementById('usdValue').textContent = ' + usdValue.toFixed(2)';
 
                 // NFT preview
                 const currentContribution = await fundMeContract.getHowMuchDudeFundedInUsdActual(userAddress);
@@ -1139,4 +1127,4 @@
         }
     </script>
 </body>
-</html> 
+</html>
