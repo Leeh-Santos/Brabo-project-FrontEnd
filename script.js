@@ -4,9 +4,6 @@ import { CONTRACT_ADDRESSES, FUNDME_ABI, NFT_ABI } from './constants.js';
 // Contract instances
 let provider, signer, fundMeContract, nftContract, userAddress;
 
-// Add ETH price placeholder since it's referenced in calculateRewards
-const ETH_PRICE_PLACEHOLDER = 2000; // You should replace this with actual price feed
-
 // Smooth scroll
 function scrollToFund() {
     document.getElementById('fund').scrollIntoView({ behavior: 'smooth' });
@@ -21,15 +18,21 @@ async function connectWallet() {
         }
         await window.ethereum.request({ method: 'eth_requestAccounts' });
         
-        // FIXED: Use ethers v5 syntax
+        // Use ethers v5 syntax
         provider = new ethers.providers.Web3Provider(window.ethereum);
         signer = provider.getSigner();
         userAddress = await signer.getAddress();
         
-        // Update button
+        // Update connect button to show address
         document.getElementById('connectBtn').textContent = 
-            userAddress.slice(0, 4) + '...' + userAddress.slice(-4);
+            userAddress.slice(0, 6) + '...' + userAddress.slice(-4);
         document.getElementById('connectBtn').classList.add('connected');
+        
+        // Show disconnect button
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        if (disconnectBtn) {
+            disconnectBtn.style.display = 'inline-block';
+        }
         
         // Initialize contracts
         fundMeContract = new ethers.Contract(CONTRACT_ADDRESSES.FUNDME, FUNDME_ABI, signer);
@@ -54,20 +57,44 @@ async function connectWallet() {
 // Disconnect wallet
 async function disconnectWallet() {
     userAddress = null;
+    provider = null;
+    signer = null;
+    fundMeContract = null;
+    nftContract = null;
+    
+    // Reset connect button
     document.getElementById('connectBtn').textContent = 'Connect';
     document.getElementById('connectBtn').classList.remove('connected');
+    
+    // Hide disconnect button if it exists
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    if (disconnectBtn) {
+        disconnectBtn.style.display = 'none';
+    }
+    
+    // Reset UI
     document.getElementById('fundBtn').textContent = 'Connect Wallet to Fund';
     document.getElementById('fundBtn').disabled = true;
     document.getElementById('userContribution').textContent = '$0';
     document.getElementById('currentTier').textContent = '-';
+    document.getElementById('rewardsPreview').style.display = 'none';
     updateTierHighlight(0);
+    
+    // Reset stats
+    document.getElementById('picaAvailable').textContent = '0';
+    document.getElementById('totalRaised').textContent = '0 ETH';
+    document.getElementById('totalRaisedCard').textContent = '0 ETH';
+    document.getElementById('nftsMinted').textContent = '0';
+    document.getElementById('totalFunders').textContent = '0';
+    
+    // Clear funders list
+    document.getElementById('fundersList').innerHTML = '<p style="text-align: center; color: #8b8b9a;">Connect wallet to see contributors</p>';
 }
 
 // Load user data
 async function loadUserData() {
     try {
         const contribution = await fundMeContract.getHowMuchDudeFundedInUsdActual(userAddress);
-        // FIXED: Use toNumber() for ethers v5
         const contributionNum = contribution.toNumber();
         
         document.getElementById('userContribution').textContent = '$' + contributionNum;
@@ -180,12 +207,13 @@ async function calculateRewards() {
         const ethValue = ethers.utils.parseEther(ethAmount);
         const picaReward = await fundMeContract.calculatePicaTokenReward(ethValue);
         
-        // Estimate ETH price
-        const ethPrice = ETH_PRICE_PLACEHOLDER;
-        const usdValue = parseFloat(ethAmount) * ethPrice;
+        // calculatePicaTokenReward returns the result already divided by 1e18
+        // So picaReward is the actual PICA tokens (not in wei)
+        const picaRewardNum = picaReward.toNumber();
+        const usdValue = picaRewardNum / 2; // PICA_MULTIPLIER is 2
         
         document.getElementById('picaReward').textContent = 
-            ethers.utils.formatEther(picaReward).slice(0, 10) + ' PICA';
+            picaRewardNum.toFixed(6) + ' PICA';
         document.getElementById('usdValue').textContent = '$' + usdValue.toFixed(2);
         
         // NFT preview
@@ -193,11 +221,11 @@ async function calculateRewards() {
         const totalAfterFunding = currentContribution.toNumber() + usdValue;
         
         let nftStatus = '';
-        if (currentContribution < 10 && totalAfterFunding >= 10) {
+        if (currentContribution.toNumber() < 10 && totalAfterFunding >= 10) {
             nftStatus = '🎉 You will receive your first NFT!';
-        } else if (totalAfterFunding >= 1000 && currentContribution < 1000) {
+        } else if (totalAfterFunding >= 1000 && currentContribution.toNumber() < 1000) {
             nftStatus = '⬆️ Upgrade to GOLD tier!';
-        } else if (totalAfterFunding >= 100 && currentContribution < 100) {
+        } else if (totalAfterFunding >= 100 && currentContribution.toNumber() < 100) {
             nftStatus = '⬆️ Upgrade to SILVER tier!';
         } else if (totalAfterFunding < 10) {
             const needed = 10 - totalAfterFunding;
@@ -300,12 +328,19 @@ function listenToEvents() {
 
 // Event listeners
 document.getElementById('connectBtn').addEventListener('click', async () => {
-    if (userAddress) {
-        await disconnectWallet();
-    } else {
+    // Connect button now only connects (doesn't toggle)
+    if (!userAddress) {
         await connectWallet();
     }
 });
+
+// Disconnect button event listener
+const disconnectBtn = document.getElementById('disconnectBtn');
+if (disconnectBtn) {
+    disconnectBtn.addEventListener('click', async () => {
+        await disconnectWallet();
+    });
+}
 
 document.getElementById('fundBtn').addEventListener('click', fundProject);
 
