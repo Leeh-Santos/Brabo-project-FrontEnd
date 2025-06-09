@@ -158,34 +158,6 @@ export const PICA_TOKEN_ABI = [
     }
 ];
 
-// Chain Configuration
-export const CHAIN_CONFIG = {
-    // Ethereum Mainnet
-    1: {
-        name: "Ethereum Mainnet",
-        rpcUrl: "https://mainnet.infura.io/v3/YOUR_INFURA_KEY",
-        chainId: "0x1",
-        symbol: "ETH",
-        blockExplorer: "https://etherscan.io"
-    },
-    // Goerli Testnet
-    5: {
-        name: "Goerli Testnet",
-        rpcUrl: "https://goerli.infura.io/v3/YOUR_INFURA_KEY",
-        chainId: "0x5",
-        symbol: "ETH",
-        blockExplorer: "https://goerli.etherscan.io"
-    },
-    // Sepolia Testnet
-    11155111: {
-        name: "Sepolia Testnet",
-        rpcUrl: "https://sepolia.infura.io/v3/YOUR_INFURA_KEY",
-        chainId: "0xaa36a7",
-        symbol: "ETH",
-        blockExplorer: "https://sepolia.etherscan.io"
-    },
-    // Add your preferred chain here
-};
 
 // NFT Tier Thresholds (in USD)
 export const NFT_TIERS = {
@@ -209,7 +181,3 @@ export const NFT_TIERS = {
     }
 };
 
-// Other Constants
-export const ETH_PRICE_PLACEHOLDER = 2000; // Update this or use Chainlink oracle
-export const BLOCK_CONFIRMATIONS = 1;
-export const GAS_LIMIT_MULTIPLIER = 1.1; // 10% buffer for gas estimation

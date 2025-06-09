@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BRABO - Designing with balance, love and care.</title>
+    <!-- Include in <head> -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
+
     <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
     <style>
         * {
@@ -14,24 +17,73 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0f0f1a;
+            background: #0a0a14;
             color: #fff;
             overflow-x: hidden;
             line-height: 1.6;
             min-height: 100vh;
+            position: relative;
         }
 
-        /* Navigation */
+        /* Animated Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(30, 64, 175, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(251, 191, 36, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(59, 130, 246, 0.2) 0%, transparent 40%),
+                radial-gradient(circle at 90% 10%, rgba(251, 191, 36, 0.15) 0%, transparent 30%);
+            z-index: -2;
+            animation: backgroundShift 20s ease-in-out infinite;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        @keyframes backgroundShift {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            33% { transform: scale(1.1) rotate(1deg); }
+            66% { transform: scale(1.05) rotate(-1deg); }
+        }
+
+        /* Bull Pattern Overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(251, 191, 36, 0.03) 35px, rgba(251, 191, 36, 0.03) 70px),
+                repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba(59, 130, 246, 0.02) 35px, rgba(59, 130, 246, 0.02) 70px);
+            z-index: -1;
+            opacity: 0.5;
+        }
+
+        /* Navigation - Enhanced */
         nav {
             position: fixed;
             top: 0;
             width: 100%;
-            padding: 2rem 4rem;
+            padding: 1.0rem 4rem;
             z-index: 1000;
-            backdrop-filter: blur(20px);
-            background: rgba(15, 15, 26, 0.8);
+            backdrop-filter: blur(20px) saturate(180%);
+            background: linear-gradient(to bottom, rgba(15, 15, 26, 0.95), rgba(15, 15, 26, 0.7));
+            border-bottom: 1px solid rgba(251, 191, 36, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
         }
 
+        nav:hover {
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
+        }
         .nav-container {
             display: flex;
             justify-content: space-between;
@@ -40,11 +92,44 @@
             margin: 0 auto;
         }
 
-        .logo {
+        /*.logo {
+            display: flex;
+            align-items: center;
             font-size: 1.5rem;
             font-weight: 700;
             letter-spacing: -0.5px;
+        }*/
+
+        .logo {
+          display: flex;
+          align-items: center;
+          font-family: 'Orbitron', sans-serif;
+          font-weight: 700;
+          font-size: 2rem;
+          color: #00BFFF; /* neon blue to match the eyes */
+          text-shadow: 0 0 8px rgba(0, 191, 255, 0.5);
         }
+
+        .logo-icon {
+          height: 60px; /* Adjust as needed */
+          width: auto;
+          margin-right: 8px;
+        }
+
+        .logo-text {
+          animation: glow 2s ease-in-out infinite alternate;
+          text-shadow: 0 0 3px #00BFFF, 0 0 6px rgba(0, 191, 255, 0.4);
+        }
+        
+        @keyframes glow {
+          from {
+            text-shadow: 0 0 3px #00BFFF, 0 0 6px rgba(0, 191, 255, 0.4);
+          }
+          to {
+            text-shadow: 0 0 5px #00FFFF, 0 0 10px rgba(0, 255, 255, 0.3);
+          }
+        }
+        
 
         .nav-menu {
             display: flex;
@@ -607,7 +692,10 @@
     <!-- Navigation -->
     <nav>
         <div class="nav-container">
-            <div class="logo">BRABO</div>
+            <div class="logo">
+                <img src="tkimg.png" alt="Bull Icon" class="logo-icon" />
+                <span class="logo-text">B R A B O</span>
+            </div>
             <div class="nav-menu">
                 <a href="#home" class="nav-link">Home</a>
                 <a href="#about" class="nav-link">About</a>
@@ -627,9 +715,10 @@
                 Support the BRABO project and earn exclusive rewards. Get 2x value in PICA tokens 
                 and unlock upgradable NFTs as you contribute to our vision.
             </p>
-            <button class="cta-button" onclick="scrollToFund()">
+            <a href="#fund" class="cta-button">
                 Fund Project →
-            </button>
+            </a>
+
         </div>
 
         <div class="floating-elements">
@@ -780,10 +869,7 @@
         import { 
             CONTRACT_ADDRESSES, 
             FUNDME_ABI, 
-            NFT_ABI, 
-            PICA_TOKEN_ABI,
-            NFT_TIERS,
-            ETH_PRICE_PLACEHOLDER 
+            NFT_ABI
         } from './constants.js';
 
         // Contract instances
