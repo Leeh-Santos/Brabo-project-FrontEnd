@@ -1,7 +1,7 @@
 // Contract Addresses - Replace these with your deployed contract addresses
 export const CONTRACT_ADDRESSES = {
-    FUNDME: "0xcdDC9342Fb184BcC28b274B3629Ae1a773bf378A", // Replace with your FundMe contract address
-    NFT: "0xd11E1385dFfe94bCF79D942226420CFd4EbC2693", // Replace with your NftBrabo contract address
+    FUNDME: "0x2aDbEa927A0f06536439Ed2FD8Ef3Fca51d31756", // Replace with your FundMe contract address
+    NFT: "0xcdDC9342Fb184BcC28b274B3629Ae1a773bf378A", // Replace with your NftBrabo contract address
     PICA_TOKEN: "0xa7B99dB6E210A5b8acc94D4eD2094886a7037773", // Replace with your PICA token contract address
 };
 
