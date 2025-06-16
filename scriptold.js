@@ -9,381 +9,11 @@ function scrollToFund() {
     document.getElementById('fund').scrollIntoView({ behavior: 'smooth' });
 }
 
-// Show success modal
-function showSuccessModal(title, message) {
-    // Remove existing modal if any
-    const existingModal = document.getElementById('successModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    // Create modal HTML
-    const modalHTML = `
-        <div id="successModal" class="success-modal-overlay">
-            <div class="success-modal">
-                <div class="success-modal-header">
-                    <div class="success-icon">✅</div>
-                    <h3>${title}</h3>
-                </div>
-                <div class="success-modal-content">
-                    <p>${message}</p>
-                </div>
-                <div class="success-modal-actions">
-                    <button class="success-close-btn" id="successCloseBtn">Awesome!</button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Add modal to page
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
-    // Add event listeners
-    document.getElementById('successCloseBtn').addEventListener('click', closeSuccessModal);
-    
-    // Close on overlay click
-    document.getElementById('successModal').addEventListener('click', (e) => {
-        if (e.target.id === 'successModal') {
-            closeSuccessModal();
-        }
-    });
-    
-    // Close on Escape key
-    document.addEventListener('keydown', function escapeHandler(e) {
-        if (e.key === 'Escape') {
-            closeSuccessModal();
-            document.removeEventListener('keydown', escapeHandler);
-        }
-    });
-    
-    // Add event listeners
-    document.getElementById('errorCloseBtn').addEventListener('click', closeErrorModal);
-    
-    // Close on overlay click
-    document.getElementById('errorModal').addEventListener('click', (e) => {
-        if (e.target.id === 'errorModal') {
-            closeErrorModal();
-        }
-    });
-    
-    // Close on Escape key
-    document.addEventListener('keydown', function escapeHandler(e) {
-        if (e.key === 'Escape') {
-            closeErrorModal();
-            document.removeEventListener('keydown', escapeHandler);
-        }
-    });
-    
-    // Add styles if not already added
-    if (!document.getElementById('successModalStyles')) {
-        const styles = `
-            <style id="successModalStyles">
-                .success-modal-overlay {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background: rgba(0, 0, 0, 0.8);
-                    backdrop-filter: blur(8px);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 10000;
-                    animation: fadeIn 0.3s ease-out;
-                }
-                
-                .success-modal {
-                    background: linear-gradient(135deg, #1a2e1a 0%, #163e16 100%);
-                    border: 1px solid rgba(34, 197, 94, 0.3);
-                    border-radius: 16px;
-                    padding: 0;
-                    max-width: 480px;
-                    width: 90%;
-                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-                    animation: slideUp 0.3s ease-out;
-                    overflow: hidden;
-                }
-                
-                .success-modal-header {
-                    padding: 24px 24px 0 24px;
-                    text-align: center;
-                }
-                
-                .success-icon {
-                    font-size: 48px;
-                    margin-bottom: 16px;
-                    filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.3));
-                }
-                
-                .success-modal-header h3 {
-                    margin: 0;
-                    color: #ffffff;
-                    font-size: 24px;
-                    font-weight: 600;
-                    margin-bottom: 8px;
-                }
-                
-                .success-modal-content {
-                    padding: 16px 24px 24px 24px;
-                    text-align: center;
-                }
-                
-                .success-modal-content p {
-                    margin: 0;
-                    color: #b8b8c3;
-                    font-size: 16px;
-                    line-height: 1.5;
-                }
-                
-                .success-modal-actions {
-                    padding: 0 24px 24px 24px;
-                    display: flex;
-                    justify-content: center;
-                }
-                
-                .success-close-btn {
-                    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-                    color: white;
-                    border: none;
-                    padding: 12px 32px;
-                    border-radius: 8px;
-                    font-size: 14px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                }
-                
-                .success-close-btn:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
-                }
-                
-                @keyframes fadeOut {
-                    from { opacity: 1; }
-                    to { opacity: 0; }
-                }
-            </style>
-        `;
-        document.head.insertAdjacentHTML('beforeend', styles);
-    }
-}
-
-// Show error modal
-function showErrorModal(title, message, actionText = null, actionUrl = null) {
-    // Remove existing modal if any
-    const existingModal = document.getElementById('errorModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    // Create modal HTML
-    const modalHTML = `
-        <div id="errorModal" class="error-modal-overlay">
-            <div class="error-modal">
-                <div class="error-modal-header">
-                    <div class="error-icon">⚠️</div>
-                    <h3>${title}</h3>
-                </div>
-                <div class="error-modal-content">
-                    <p>${message}</p>
-                </div>
-                <div class="error-modal-actions">
-                    ${actionText && actionUrl ? `<a href="${actionUrl}" target="_blank" class="error-action-btn">${actionText}</a>` : ''}
-                    <button class="error-close-btn" id="errorCloseBtn">Close</button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Add modal to page
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
-    // Add styles if not already added
-    if (!document.getElementById('errorModalStyles')) {
-        const styles = `
-            <style id="errorModalStyles">
-                .error-modal-overlay {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background: rgba(0, 0, 0, 0.8);
-                    backdrop-filter: blur(8px);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 10000;
-                    animation: fadeIn 0.3s ease-out;
-                }
-                
-                .error-modal {
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 16px;
-                    padding: 0;
-                    max-width: 480px;
-                    width: 90%;
-                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-                    animation: slideUp 0.3s ease-out;
-                    overflow: hidden;
-                }
-                
-                .error-modal-header {
-                    padding: 24px 24px 0 24px;
-                    text-align: center;
-                }
-                
-                .error-icon {
-                    font-size: 48px;
-                    margin-bottom: 16px;
-                    filter: drop-shadow(0 0 10px rgba(255, 193, 7, 0.3));
-                }
-                
-                .error-modal-header h3 {
-                    margin: 0;
-                    color: #ffffff;
-                    font-size: 24px;
-                    font-weight: 600;
-                    margin-bottom: 8px;
-                }
-                
-                .error-modal-content {
-                    padding: 16px 24px 24px 24px;
-                    text-align: center;
-                }
-                
-                .error-modal-content p {
-                    margin: 0;
-                    color: #b8b8c3;
-                    font-size: 16px;
-                    line-height: 1.5;
-                }
-                
-                .error-modal-actions {
-                    padding: 0 24px 24px 24px;
-                    display: flex;
-                    gap: 12px;
-                    justify-content: center;
-                    flex-wrap: wrap;
-                }
-                
-                .error-action-btn {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    border: none;
-                    padding: 12px 24px;
-                    border-radius: 8px;
-                    font-size: 14px;
-                    font-weight: 600;
-                    text-decoration: none;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                    transition: all 0.3s ease;
-                    cursor: pointer;
-                }
-                
-                .error-action-btn:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-                }
-                
-                .error-close-btn {
-                    background: rgba(255, 255, 255, 0.1);
-                    color: #ffffff;
-                    border: 1px solid rgba(255, 255, 255, 0.2);
-                    padding: 12px 24px;
-                    border-radius: 8px;
-                    font-size: 14px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                }
-                
-                .error-close-btn:hover {
-                    background: rgba(255, 255, 255, 0.2);
-                    transform: translateY(-2px);
-                }
-                
-                @keyframes fadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
-                }
-                
-                @keyframes fadeOut {
-                    from { opacity: 1; }
-                    to { opacity: 0; }
-                }
-                
-                @keyframes slideUp {
-                    from { 
-                        opacity: 0;
-                        transform: translateY(40px) scale(0.95);
-                    }
-                    to { 
-                        opacity: 1;
-                        transform: translateY(0) scale(1);
-                    }
-                }
-                
-                @media (max-width: 480px) {
-                    .error-modal {
-                        margin: 20px;
-                        width: calc(100% - 40px);
-                    }
-                    
-                    .error-modal-actions {
-                        flex-direction: column;
-                    }
-                    
-                    .error-action-btn,
-                    .error-close-btn {
-                        width: 100%;
-                        justify-content: center;
-                    }
-                }
-            </style>
-        `;
-        document.head.insertAdjacentHTML('beforeend', styles);
-    }
-}
-
-// Close error modal
-function closeErrorModal() {
-    const modal = document.getElementById('errorModal');
-    if (modal) {
-        modal.style.animation = 'fadeOut 0.3s ease-out';
-        setTimeout(() => modal.remove(), 300);
-    }
-}
-
-// Make functions globally accessible
-window.closeErrorModal = closeErrorModal;
-
-// Close success modal
-function closeSuccessModal() {
-    const modal = document.getElementById('successModal');
-    if (modal) {
-        modal.style.animation = 'fadeOut 0.3s ease-out';
-        setTimeout(() => modal.remove(), 300);
-    }
-}
-
-// Make functions globally accessible
-window.closeSuccessModal = closeSuccessModal;
-
 // Connect wallet
 async function connectWallet() {
     try {
         if (typeof window.ethereum === 'undefined') {
-            showErrorModal(
-                'MetaMask Required',
-                'To connect your wallet and participate in funding, you need to install MetaMask browser extension. MetaMask is a secure wallet that lets you interact with blockchain applications.',
-                'Install MetaMask',
-                'https://metamask.io/download/'
-            );
+            alert('Please install MetaMask!');
             return;
         }
         await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -420,12 +50,7 @@ async function connectWallet() {
         listenToEvents();
     } catch (error) {
         console.error('Error connecting wallet:', error);
-        showErrorModal(
-            'Connection Failed',
-            'There was an error connecting to your wallet. This might be due to a rejected connection request or a network issue. Please try again.',
-            null,
-            null
-        );
+        alert('Error connecting wallet. Please try again.');
     }
 }
 
@@ -653,24 +278,14 @@ async function calculateRewards() {
 // Fund project
 async function fundProject() {
     if (!fundMeContract || !userAddress) {
-        showErrorModal(
-            'Wallet Not Connected',
-            'Please connect your wallet first to fund the project. Click the "Connect" button to get started.',
-            null,
-            null
-        );
+        alert('Please connect your wallet first');
         return;
     }
     
     const ethAmount = document.getElementById('ethAmount').value;
     
     if (!ethAmount || ethAmount <= 0) {
-        showErrorModal(
-            'Invalid Amount',
-            'Please enter a valid funding amount greater than 0 ETH.',
-            null,
-            null
-        );
+        alert('Please enter a valid amount');
         return;
     }
     
@@ -685,12 +300,7 @@ async function fundProject() {
         document.getElementById('fundBtn').innerHTML = '<span class="loading"></span> Confirming...';
         await tx.wait();
         
-        // Success message with better UX
-        showSuccessModal(
-            'Funding Successful! 🎉',
-            `You have successfully funded ${ethAmount} ETH to the project. Your PICA tokens will be distributed shortly. Thank you for your support!`
-        );
-        
+        alert('Successfully funded! You will receive your PICA tokens shortly.');
         document.getElementById('ethAmount').value = '';
         document.getElementById('rewardsPreview').style.display = 'none';
         
@@ -699,24 +309,7 @@ async function fundProject() {
         await loadContractData();
     } catch (error) {
         console.error('Error funding:', error);
-        let errorMessage = 'There was an error processing your funding transaction. ';
-        
-        if (error.code === 'INSUFFICIENT_FUNDS') {
-            errorMessage += 'You do not have enough ETH in your wallet to complete this transaction.';
-        } else if (error.code === 'USER_REJECTED') {
-            errorMessage += 'Transaction was cancelled by user.';
-        } else if (error.message && error.message.includes('insufficient funds')) {
-            errorMessage += 'You do not have enough ETH in your wallet to complete this transaction including gas fees.';
-        } else {
-            errorMessage += 'Please check your connection and try again.';
-        }
-        
-        showErrorModal(
-            'Transaction Failed',
-            errorMessage,
-            null,
-            null
-        );
+        alert('Error funding project. Please try again.');
     } finally {
         document.getElementById('fundBtn').disabled = false;
         document.getElementById('fundBtn').textContent = 'Fund Project';
@@ -766,10 +359,7 @@ function listenToEvents() {
     
     fundMeContract.on('NftMinted', async (recipient) => {
         if (recipient.toLowerCase() === userAddress.toLowerCase()) {
-            showSuccessModal(
-                'NFT Received! 🎉',
-                'Congratulations! You just received your BRABO NFT! Check your wallet to see your new collectible.'
-            );
+            alert('🎉 Congratulations! You just received your BRABO NFT!');
             await loadUserData();
         }
     });
@@ -777,10 +367,7 @@ function listenToEvents() {
     fundMeContract.on('TierUpgraded', async (tokenId, user, newTier) => {
         if (user.toLowerCase() === userAddress.toLowerCase()) {
             const tierNames = ['Bronze', 'Silver', 'Gold'];
-            showSuccessModal(
-                'Tier Upgraded! 🎊',
-                `Your NFT has been upgraded to ${tierNames[newTier]} tier! Enjoy your enhanced benefits and exclusive perks.`
-            );
+            alert(`🎊 Your NFT has been upgraded to ${tierNames[newTier]} tier!`);
             await loadUserData();
         }
     });
