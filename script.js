@@ -210,68 +210,108 @@ async function loadUserData() {
     }
 }
 
-// Load contract data
+// Load contract data (works with or without wallet connection)
 async function loadContractData() {
     try {
-        if (!fundMeContract || !provider) {
-            // Set default values when not connected
-            document.getElementById('picaAvailable').textContent = '0';
-            document.getElementById('totalRaised').textContent = '0 ETH';
-            document.getElementById('totalRaisedCard').textContent = '0 ETH';
-            document.getElementById('nftsMinted').textContent = '0';
-            document.getElementById('totalFunders').textContent = '0';
-            document.getElementById('fundersList').innerHTML = '<p style="text-align: center; color: #8b8b9a;">Connect wallet to see contributors</p>';
-            return;
+        // Use a public provider if no wallet is connected
+        let currentProvider = provider;
+        if (!currentProvider) {
+            // Try to create a public provider - adjust RPC URL based on your network
+            try {
+                // For Ethereum mainnet - replace with your network's RPC
+                currentProvider = new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/bddd97b7f8ea4428bc578c31798385da');
+                
+                await currentProvider.getNetwork();
+            } catch (e) {
+                console.log('Could not connect to public RPC, using fallback values');
+                setFallbackValues();
+                return;
+            }
+        }
+        
+        // Create read-only contract instances if they don't exist
+        let readOnlyFundMeContract = fundMeContract;
+        let readOnlyNftContract = nftContract;
+        
+        if (!readOnlyFundMeContract) {
+            readOnlyFundMeContract = new ethers.Contract(CONTRACT_ADDRESSES.FUNDME, FUNDME_ABI, currentProvider);
+        }
+        
+        if (!readOnlyNftContract) {
+            readOnlyNftContract = new ethers.Contract(CONTRACT_ADDRESSES.NFT, NFT_ABI, currentProvider);
         }
         
         // Get PICA balance
-        const picaBalance = await fundMeContract.getPicaTokenBalance();
-        document.getElementById('picaAvailable').textContent = 
-            ethers.utils.formatEther(picaBalance).slice(0, 8);
+        try {
+            const picaBalance = await readOnlyFundMeContract.getPicaTokenBalance();
+            document.getElementById('picaAvailable').textContent = 
+                ethers.utils.formatEther(picaBalance).slice(0, 8);
+        } catch (e) {
+            console.log('Could not load PICA balance:', e.message);
+            document.getElementById('picaAvailable').textContent = '0';
+        }
         
         // Get total raised
-        const contractBalance = await provider.getBalance(CONTRACT_ADDRESSES.FUNDME);
-        const ethAmount = ethers.utils.formatEther(contractBalance).slice(0, 6);
-        document.getElementById('totalRaised').textContent = ethAmount + ' ETH';
-        document.getElementById('totalRaisedCard').textContent = ethAmount + ' ETH';
+        try {
+            const contractBalance = await currentProvider.getBalance(CONTRACT_ADDRESSES.FUNDME);
+            const ethAmount = ethers.utils.formatEther(contractBalance).slice(0, 6);
+            document.getElementById('totalRaised').textContent = ethAmount + ' ETH';
+            document.getElementById('totalRaisedCard').textContent = ethAmount + ' ETH';
+        } catch (e) {
+            console.log('Could not load total raised:', e.message);
+            document.getElementById('totalRaised').textContent = '0 ETH';
+            document.getElementById('totalRaisedCard').textContent = '0 ETH';
+        }
         
         // Get NFT count
-        if (nftContract) {
-            try {
-                const nftCount = await nftContract.getTotalSupply();
-                document.getElementById('nftsMinted').textContent = nftCount.toString();
-            } catch (e) {
-                document.getElementById('nftsMinted').textContent = '0';
-            }
-        } else {
+        try {
+            const nftCount = await readOnlyNftContract.getTotalSupply();
+            document.getElementById('nftsMinted').textContent = nftCount.toString();
+        } catch (e) {
+            console.log('Could not load NFT count:', e.message);
             document.getElementById('nftsMinted').textContent = '0';
         }
         
-        // Load funders
-        await loadFundersList();
+        // Load funders list
+        await loadFundersList(readOnlyFundMeContract);
+        
     } catch (error) {
         console.error('Error loading contract data:', error);
-        toast.error('Failed to load contract data. Some information may be outdated.', 'Data Load Error');
+        setFallbackValues();
     }
 }
 
+// Set fallback values when data can't be loaded
+function setFallbackValues() {
+    document.getElementById('picaAvailable').textContent = '0';
+    document.getElementById('totalRaised').textContent = '0 ETH';
+    document.getElementById('totalRaisedCard').textContent = '0 ETH';
+    document.getElementById('nftsMinted').textContent = '0';
+    document.getElementById('totalFunders').textContent = '0';
+    document.getElementById('fundersList').innerHTML = '<p style="text-align: center; color: #8b8b9a;">Unable to load contributors without wallet connection</p>';
+}
+
 // Load funders list
-async function loadFundersList() {
-    if (!fundMeContract) {
-        document.getElementById('fundersList').innerHTML = '<p style="text-align: center; color: #8b8b9a;">Connect wallet to see contributors</p>';
+async function loadFundersList(contractToUse = null) {
+    const currentContract = contractToUse || fundMeContract;
+    
+    if (!currentContract) {
+        document.getElementById('fundersList').innerHTML = '<p style="text-align: center; color: #8b8b9a;">Unable to load contributors</p>';
+        document.getElementById('totalFunders').textContent = '0';
         return;
     }
     
     try {
         const fundersList = document.getElementById('fundersList');
-        fundersList.innerHTML = '';
+        fundersList.innerHTML = '<p style="text-align: center; color: #8b8b9a;">Loading contributors...</p>';
         
         // Get funding events
-        const filter = fundMeContract.filters.Funded();
-        const events = await fundMeContract.queryFilter(filter, -10000);
+        const filter = currentContract.filters.Funded();
+        const events = await currentContract.queryFilter(filter, -10000);
         
         if (events.length === 0) {
             fundersList.innerHTML = '<p style="text-align: center; color: #8b8b9a;">No contributors yet. Be the first!</p>';
+            document.getElementById('totalFunders').textContent = '0';
             return;
         }
         
@@ -295,6 +335,9 @@ async function loadFundersList() {
         
         document.getElementById('totalFunders').textContent = Object.keys(funders).length;
         
+        // Clear loading message
+        fundersList.innerHTML = '';
+        
         sortedFunders.forEach(([address, amount]) => {
             const row = document.createElement('div');
             row.className = 'funder-row';
@@ -307,6 +350,7 @@ async function loadFundersList() {
     } catch (error) {
         console.error('Error loading funders:', error);
         document.getElementById('fundersList').innerHTML = '<p style="text-align: center; color: #8b8b9a;">Error loading contributors</p>';
+        document.getElementById('totalFunders').textContent = '0';
     }
 }
 
@@ -496,10 +540,18 @@ document.getElementById('ethAmount').addEventListener('input', () => {
     }
 });
 
-// Check wallet on load
+// Check wallet on load with better debugging
 window.addEventListener('load', async () => {
     console.log('Page loaded, initializing...');
-    await loadContractData();
+    console.log('Contract addresses:', CONTRACT_ADDRESSES);
+    
+    // Always try to load basic contract data
+    try {
+        await loadContractData();
+        console.log('Contract data loaded successfully');
+    } catch (error) {
+        console.error('Failed to load contract data on page load:', error);
+    }
 });
 
 // Handle account changes
