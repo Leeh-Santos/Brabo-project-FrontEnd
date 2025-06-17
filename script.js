@@ -1,399 +1,112 @@
 import { ethers } from 'https://cdn.skypack.dev/ethers@5.7.2';
 import { CONTRACT_ADDRESSES, FUNDME_ABI, NFT_ABI } from './constants.js';
 
+// Toast notification system
+class ToastManager {
+    constructor() {
+        this.container = document.getElementById('toastContainer');
+        this.toasts = new Set();
+    }
+
+    show(message, type = 'info', title = '', duration = 5000) {
+        const toast = this.createToast(message, type, title);
+        this.container.appendChild(toast);
+        this.toasts.add(toast);
+
+        // Trigger animation
+        requestAnimationFrame(() => {
+            toast.classList.add('show');
+        });
+
+        // Auto remove
+        if (duration > 0) {
+            setTimeout(() => {
+                this.remove(toast);
+            }, duration);
+        }
+
+        return toast;
+    }
+
+    createToast(message, type, title) {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+
+        const icons = {
+            success: '✓',
+            error: '✕',
+            info: 'ℹ'
+        };
+
+        const titles = {
+            success: title || 'Success',
+            error: title || 'Error',
+            info: title || 'Info'
+        };
+
+        toast.innerHTML = `
+            <div class="toast-icon">${icons[type]}</div>
+            <div class="toast-content">
+                <div class="toast-title">${titles[type]}</div>
+                <div class="toast-message">${message}</div>
+            </div>
+            <button class="toast-close">✕</button>
+        `;
+
+        // Add close event
+        toast.querySelector('.toast-close').addEventListener('click', () => {
+            this.remove(toast);
+        });
+
+        return toast;
+    }
+
+    remove(toast) {
+        if (!this.toasts.has(toast)) return;
+
+        toast.classList.remove('show');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+            this.toasts.delete(toast);
+        }, 300);
+    }
+
+    success(message, title) {
+        return this.show(message, 'success', title);
+    }
+
+    error(message, title) {
+        return this.show(message, 'error', title);
+    }
+
+    info(message, title) {
+        return this.show(message, 'info', title);
+    }
+}
+
+// Initialize toast manager
+const toast = new ToastManager();
+
 // Contract instances
 let provider, signer, fundMeContract, nftContract, userAddress;
-
-// Smooth scroll
-function scrollToFund() {
-    document.getElementById('fund').scrollIntoView({ behavior: 'smooth' });
-}
-
-// Show success modal
-function showSuccessModal(title, message) {
-    // Remove existing modal if any
-    const existingModal = document.getElementById('successModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    // Create modal HTML
-    const modalHTML = `
-        <div id="successModal" class="success-modal-overlay">
-            <div class="success-modal">
-                <div class="success-modal-header">
-                    <div class="success-icon">✅</div>
-                    <h3>${title}</h3>
-                </div>
-                <div class="success-modal-content">
-                    <p>${message}</p>
-                </div>
-                <div class="success-modal-actions">
-                    <button class="success-close-btn" id="successCloseBtn">Awesome!</button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Add modal to page
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
-    // Add event listeners
-    document.getElementById('successCloseBtn').addEventListener('click', closeSuccessModal);
-    
-    // Close on overlay click
-    document.getElementById('successModal').addEventListener('click', (e) => {
-        if (e.target.id === 'successModal') {
-            closeSuccessModal();
-        }
-    });
-    
-    // Close on Escape key
-    document.addEventListener('keydown', function escapeHandler(e) {
-        if (e.key === 'Escape') {
-            closeSuccessModal();
-            document.removeEventListener('keydown', escapeHandler);
-        }
-    });
-    
-    // Add event listeners
-    document.getElementById('errorCloseBtn').addEventListener('click', closeErrorModal);
-    
-    // Close on overlay click
-    document.getElementById('errorModal').addEventListener('click', (e) => {
-        if (e.target.id === 'errorModal') {
-            closeErrorModal();
-        }
-    });
-    
-    // Close on Escape key
-    document.addEventListener('keydown', function escapeHandler(e) {
-        if (e.key === 'Escape') {
-            closeErrorModal();
-            document.removeEventListener('keydown', escapeHandler);
-        }
-    });
-    
-    // Add styles if not already added
-    if (!document.getElementById('successModalStyles')) {
-        const styles = `
-            <style id="successModalStyles">
-                .success-modal-overlay {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background: rgba(0, 0, 0, 0.8);
-                    backdrop-filter: blur(8px);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 10000;
-                    animation: fadeIn 0.3s ease-out;
-                }
-                
-                .success-modal {
-                    background: linear-gradient(135deg, #1a2e1a 0%, #163e16 100%);
-                    border: 1px solid rgba(34, 197, 94, 0.3);
-                    border-radius: 16px;
-                    padding: 0;
-                    max-width: 480px;
-                    width: 90%;
-                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-                    animation: slideUp 0.3s ease-out;
-                    overflow: hidden;
-                }
-                
-                .success-modal-header {
-                    padding: 24px 24px 0 24px;
-                    text-align: center;
-                }
-                
-                .success-icon {
-                    font-size: 48px;
-                    margin-bottom: 16px;
-                    filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.3));
-                }
-                
-                .success-modal-header h3 {
-                    margin: 0;
-                    color: #ffffff;
-                    font-size: 24px;
-                    font-weight: 600;
-                    margin-bottom: 8px;
-                }
-                
-                .success-modal-content {
-                    padding: 16px 24px 24px 24px;
-                    text-align: center;
-                }
-                
-                .success-modal-content p {
-                    margin: 0;
-                    color: #b8b8c3;
-                    font-size: 16px;
-                    line-height: 1.5;
-                }
-                
-                .success-modal-actions {
-                    padding: 0 24px 24px 24px;
-                    display: flex;
-                    justify-content: center;
-                }
-                
-                .success-close-btn {
-                    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-                    color: white;
-                    border: none;
-                    padding: 12px 32px;
-                    border-radius: 8px;
-                    font-size: 14px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                }
-                
-                .success-close-btn:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
-                }
-                
-                @keyframes fadeOut {
-                    from { opacity: 1; }
-                    to { opacity: 0; }
-                }
-            </style>
-        `;
-        document.head.insertAdjacentHTML('beforeend', styles);
-    }
-}
-
-// Show error modal
-function showErrorModal(title, message, actionText = null, actionUrl = null) {
-    // Remove existing modal if any
-    const existingModal = document.getElementById('errorModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    // Create modal HTML
-    const modalHTML = `
-        <div id="errorModal" class="error-modal-overlay">
-            <div class="error-modal">
-                <div class="error-modal-header">
-                    <div class="error-icon">⚠️</div>
-                    <h3>${title}</h3>
-                </div>
-                <div class="error-modal-content">
-                    <p>${message}</p>
-                </div>
-                <div class="error-modal-actions">
-                    ${actionText && actionUrl ? `<a href="${actionUrl}" target="_blank" class="error-action-btn">${actionText}</a>` : ''}
-                    <button class="error-close-btn" id="errorCloseBtn">Close</button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Add modal to page
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
-    // Add styles if not already added
-    if (!document.getElementById('errorModalStyles')) {
-        const styles = `
-            <style id="errorModalStyles">
-                .error-modal-overlay {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background: rgba(0, 0, 0, 0.8);
-                    backdrop-filter: blur(8px);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 10000;
-                    animation: fadeIn 0.3s ease-out;
-                }
-                
-                .error-modal {
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 16px;
-                    padding: 0;
-                    max-width: 480px;
-                    width: 90%;
-                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-                    animation: slideUp 0.3s ease-out;
-                    overflow: hidden;
-                }
-                
-                .error-modal-header {
-                    padding: 24px 24px 0 24px;
-                    text-align: center;
-                }
-                
-                .error-icon {
-                    font-size: 48px;
-                    margin-bottom: 16px;
-                    filter: drop-shadow(0 0 10px rgba(255, 193, 7, 0.3));
-                }
-                
-                .error-modal-header h3 {
-                    margin: 0;
-                    color: #ffffff;
-                    font-size: 24px;
-                    font-weight: 600;
-                    margin-bottom: 8px;
-                }
-                
-                .error-modal-content {
-                    padding: 16px 24px 24px 24px;
-                    text-align: center;
-                }
-                
-                .error-modal-content p {
-                    margin: 0;
-                    color: #b8b8c3;
-                    font-size: 16px;
-                    line-height: 1.5;
-                }
-                
-                .error-modal-actions {
-                    padding: 0 24px 24px 24px;
-                    display: flex;
-                    gap: 12px;
-                    justify-content: center;
-                    flex-wrap: wrap;
-                }
-                
-                .error-action-btn {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    border: none;
-                    padding: 12px 24px;
-                    border-radius: 8px;
-                    font-size: 14px;
-                    font-weight: 600;
-                    text-decoration: none;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                    transition: all 0.3s ease;
-                    cursor: pointer;
-                }
-                
-                .error-action-btn:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-                }
-                
-                .error-close-btn {
-                    background: rgba(255, 255, 255, 0.1);
-                    color: #ffffff;
-                    border: 1px solid rgba(255, 255, 255, 0.2);
-                    padding: 12px 24px;
-                    border-radius: 8px;
-                    font-size: 14px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                }
-                
-                .error-close-btn:hover {
-                    background: rgba(255, 255, 255, 0.2);
-                    transform: translateY(-2px);
-                }
-                
-                @keyframes fadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
-                }
-                
-                @keyframes fadeOut {
-                    from { opacity: 1; }
-                    to { opacity: 0; }
-                }
-                
-                @keyframes slideUp {
-                    from { 
-                        opacity: 0;
-                        transform: translateY(40px) scale(0.95);
-                    }
-                    to { 
-                        opacity: 1;
-                        transform: translateY(0) scale(1);
-                    }
-                }
-                
-                @media (max-width: 480px) {
-                    .error-modal {
-                        margin: 20px;
-                        width: calc(100% - 40px);
-                    }
-                    
-                    .error-modal-actions {
-                        flex-direction: column;
-                    }
-                    
-                    .error-action-btn,
-                    .error-close-btn {
-                        width: 100%;
-                        justify-content: center;
-                    }
-                }
-            </style>
-        `;
-        document.head.insertAdjacentHTML('beforeend', styles);
-    }
-}
-
-// Close error modal
-function closeErrorModal() {
-    const modal = document.getElementById('errorModal');
-    if (modal) {
-        modal.style.animation = 'fadeOut 0.3s ease-out';
-        setTimeout(() => modal.remove(), 300);
-    }
-}
-
-// Make functions globally accessible
-window.closeErrorModal = closeErrorModal;
-
-// Close success modal
-function closeSuccessModal() {
-    const modal = document.getElementById('successModal');
-    if (modal) {
-        modal.style.animation = 'fadeOut 0.3s ease-out';
-        setTimeout(() => modal.remove(), 300);
-    }
-}
-
-// Make functions globally accessible
-window.closeSuccessModal = closeSuccessModal;
 
 // Connect wallet
 async function connectWallet() {
     try {
         if (typeof window.ethereum === 'undefined') {
-            showErrorModal(
-                'MetaMask Required',
-                'To connect your wallet and participate in funding, you need to install MetaMask browser extension. MetaMask is a secure wallet that lets you interact with blockchain applications.',
-                'Install MetaMask',
-                'https://metamask.io/download/'
-            );
+            toast.error('MetaMask is required to use this application. Please install MetaMask and try again.', 'Wallet Not Found');
             return;
         }
+
         await window.ethereum.request({ method: 'eth_requestAccounts' });
         
-        // Use ethers v5 syntax
         provider = new ethers.providers.Web3Provider(window.ethereum);
         signer = provider.getSigner();
         userAddress = await signer.getAddress();
         
-        // Update connect button to show address
+        // Update connect button
         document.getElementById('connectBtn').textContent = 
             userAddress.slice(0, 6) + '...' + userAddress.slice(-4);
         document.getElementById('connectBtn').classList.add('connected');
@@ -408,9 +121,12 @@ async function connectWallet() {
         fundMeContract = new ethers.Contract(CONTRACT_ADDRESSES.FUNDME, FUNDME_ABI, signer);
         nftContract = new ethers.Contract(CONTRACT_ADDRESSES.NFT, NFT_ABI, signer);
         
-        // Enable fund button
-        document.getElementById('fundBtn').textContent = 'Fund Project';
-        document.getElementById('fundBtn').disabled = false;
+        // Enable fund button and update text
+        const fundBtn = document.getElementById('fundBtn');
+        fundBtn.textContent = 'Fund Project';
+        fundBtn.disabled = false;
+        
+        toast.success('Wallet connected successfully! You can now fund the project.', 'Connected');
         
         // Load data
         await loadUserData();
@@ -420,12 +136,7 @@ async function connectWallet() {
         listenToEvents();
     } catch (error) {
         console.error('Error connecting wallet:', error);
-        showErrorModal(
-            'Connection Failed',
-            'There was an error connecting to your wallet. This might be due to a rejected connection request or a network issue. Please try again.',
-            null,
-            null
-        );
+        toast.error('Failed to connect wallet. Please try again or check your wallet settings.', 'Connection Failed');
     }
 }
 
@@ -441,15 +152,16 @@ async function disconnectWallet() {
     document.getElementById('connectBtn').textContent = 'Connect';
     document.getElementById('connectBtn').classList.remove('connected');
     
-    // Hide disconnect button if it exists
+    // Hide disconnect button
     const disconnectBtn = document.getElementById('disconnectBtn');
     if (disconnectBtn) {
         disconnectBtn.style.display = 'none';
     }
     
-    // Reset UI
-    document.getElementById('fundBtn').textContent = 'Connect Wallet to Fund';
-    document.getElementById('fundBtn').disabled = true;
+    // Reset fund button
+    const fundBtn = document.getElementById('fundBtn');
+    fundBtn.textContent = 'Connect Wallet to Fund';
+    fundBtn.disabled = false;  // Keep it enabled so users can click to connect
     document.getElementById('userContribution').textContent = '$0';
     document.getElementById('currentTier').textContent = '-';
     document.getElementById('rewardsPreview').style.display = 'none';
@@ -464,11 +176,12 @@ async function disconnectWallet() {
     
     // Clear funders list
     document.getElementById('fundersList').innerHTML = '<p style="text-align: center; color: #8b8b9a;">Connect wallet to see contributors</p>';
+    
+    toast.info('Wallet disconnected successfully.', 'Disconnected');
 }
 
 // Load user data
 async function loadUserData() {
-    // Check if contract and user are available
     if (!fundMeContract || !userAddress) {
         return;
     }
@@ -493,13 +206,13 @@ async function loadUserData() {
         updateTierHighlight(contributionNum);
     } catch (error) {
         console.error('Error loading user data:', error);
+        toast.error('Failed to load your contribution data. Please refresh the page.', 'Data Load Error');
     }
 }
 
 // Load contract data
 async function loadContractData() {
     try {
-        // Check if contracts are initialized
         if (!fundMeContract || !provider) {
             // Set default values when not connected
             document.getElementById('picaAvailable').textContent = '0';
@@ -538,18 +251,12 @@ async function loadContractData() {
         await loadFundersList();
     } catch (error) {
         console.error('Error loading contract data:', error);
-        // Set default values on error
-        document.getElementById('picaAvailable').textContent = '0';
-        document.getElementById('totalRaised').textContent = '0 ETH';
-        document.getElementById('totalRaisedCard').textContent = '0 ETH';
-        document.getElementById('nftsMinted').textContent = '0';
-        document.getElementById('totalFunders').textContent = '0';
+        toast.error('Failed to load contract data. Some information may be outdated.', 'Data Load Error');
     }
 }
 
 // Load funders list
 async function loadFundersList() {
-    // Check if contract is available
     if (!fundMeContract) {
         document.getElementById('fundersList').innerHTML = '<p style="text-align: center; color: #8b8b9a;">Connect wallet to see contributors</p>';
         return;
@@ -616,10 +323,8 @@ async function calculateRewards() {
         const ethValue = ethers.utils.parseEther(ethAmount);
         const picaReward = await fundMeContract.calculatePicaTokenReward(ethValue);
         
-        // calculatePicaTokenReward returns the result already divided by 1e18
-        // So picaReward is the actual PICA tokens (not in wei)
         const picaRewardNum = picaReward.toNumber();
-        const usdValue = picaRewardNum / 2; // PICA_MULTIPLIER is 2
+        const usdValue = picaRewardNum / 2;
         
         document.getElementById('picaReward').textContent = 
             picaRewardNum.toFixed(6) + ' PICA';
@@ -653,24 +358,14 @@ async function calculateRewards() {
 // Fund project
 async function fundProject() {
     if (!fundMeContract || !userAddress) {
-        showErrorModal(
-            'Wallet Not Connected',
-            'Please connect your wallet first to fund the project. Click the "Connect" button to get started.',
-            null,
-            null
-        );
+        toast.error('Please connect your wallet first to fund the project.', 'Wallet Required');
         return;
     }
     
     const ethAmount = document.getElementById('ethAmount').value;
     
     if (!ethAmount || ethAmount <= 0) {
-        showErrorModal(
-            'Invalid Amount',
-            'Please enter a valid funding amount greater than 0 ETH.',
-            null,
-            null
-        );
+        toast.error('Please enter a valid ETH amount to contribute.', 'Invalid Amount');
         return;
     }
     
@@ -683,14 +378,11 @@ async function fundProject() {
         });
         
         document.getElementById('fundBtn').innerHTML = '<span class="loading"></span> Confirming...';
+        toast.info('Transaction submitted! Waiting for confirmation...', 'Processing');
+        
         await tx.wait();
         
-        // Success message with better UX
-        showSuccessModal(
-            'Funding Successful! 🎉',
-            `You have successfully funded ${ethAmount} ETH to the project. Your PICA tokens will be distributed shortly. Thank you for your support!`
-        );
-        
+        toast.success('Funding successful! You will receive your PICA tokens shortly.', 'Success');
         document.getElementById('ethAmount').value = '';
         document.getElementById('rewardsPreview').style.display = 'none';
         
@@ -699,24 +391,13 @@ async function fundProject() {
         await loadContractData();
     } catch (error) {
         console.error('Error funding:', error);
-        let errorMessage = 'There was an error processing your funding transaction. ';
-        
-        if (error.code === 'INSUFFICIENT_FUNDS') {
-            errorMessage += 'You do not have enough ETH in your wallet to complete this transaction.';
-        } else if (error.code === 'USER_REJECTED') {
-            errorMessage += 'Transaction was cancelled by user.';
-        } else if (error.message && error.message.includes('insufficient funds')) {
-            errorMessage += 'You do not have enough ETH in your wallet to complete this transaction including gas fees.';
+        if (error.code === 4001) {
+            toast.error('Transaction was cancelled by user.', 'Cancelled');
+        } else if (error.message?.includes('insufficient funds')) {
+            toast.error('Insufficient ETH balance to complete this transaction.', 'Insufficient Funds');
         } else {
-            errorMessage += 'Please check your connection and try again.';
+            toast.error('Transaction failed. Please check your wallet and try again.', 'Transaction Failed');
         }
-        
-        showErrorModal(
-            'Transaction Failed',
-            errorMessage,
-            null,
-            null
-        );
     } finally {
         document.getElementById('fundBtn').disabled = false;
         document.getElementById('fundBtn').textContent = 'Fund Project';
@@ -759,6 +440,7 @@ function listenToEvents() {
     
     fundMeContract.on('Funded', async (funder, ethAmount, picaTokensAwarded) => {
         if (funder.toLowerCase() === userAddress.toLowerCase()) {
+            toast.success(`You received ${ethers.utils.formatEther(picaTokensAwarded).slice(0, 8)} PICA tokens!`, 'Tokens Received');
             await loadUserData();
         }
         await loadContractData();
@@ -766,21 +448,19 @@ function listenToEvents() {
     
     fundMeContract.on('NftMinted', async (recipient) => {
         if (recipient.toLowerCase() === userAddress.toLowerCase()) {
-            showSuccessModal(
-                'NFT Received! 🎉',
-                'Congratulations! You just received your BRABO NFT! Check your wallet to see your new collectible.'
-            );
+            toast.success('Congratulations! You just received your BRABO NFT! 🎉', 'NFT Received');
             await loadUserData();
         }
     });
     
-    fundMeContract.on('TierUpgraded', async (tokenId, user, newTier) => {
+    fundMeContract.on('TierUpgraded', async (user, totalFundingUsd) => {
         if (user.toLowerCase() === userAddress.toLowerCase()) {
-            const tierNames = ['Bronze', 'Silver', 'Gold'];
-            showSuccessModal(
-                'Tier Upgraded! 🎊',
-                `Your NFT has been upgraded to ${tierNames[newTier]} tier! Enjoy your enhanced benefits and exclusive perks.`
-            );
+            const fundingInDollars = totalFundingUsd.toNumber() / 1e18;
+            let newTier = 'Bronze';
+            if (fundingInDollars >= 1000) newTier = 'Gold';
+            else if (fundingInDollars >= 100) newTier = 'Silver';
+            
+            toast.success(`Your NFT has been upgraded to ${newTier} tier! 🎊`, 'Tier Upgraded');
             await loadUserData();
         }
     });
@@ -788,13 +468,11 @@ function listenToEvents() {
 
 // Event listeners
 document.getElementById('connectBtn').addEventListener('click', async () => {
-    // Connect button now only connects (doesn't toggle)
     if (!userAddress) {
         await connectWallet();
     }
 });
 
-// Disconnect button event listener
 const disconnectBtn = document.getElementById('disconnectBtn');
 if (disconnectBtn) {
     disconnectBtn.addEventListener('click', async () => {
@@ -802,7 +480,15 @@ if (disconnectBtn) {
     });
 }
 
-document.getElementById('fundBtn').addEventListener('click', fundProject);
+document.getElementById('fundBtn').addEventListener('click', async () => {
+    // If wallet is not connected, connect first
+    if (!userAddress) {
+        await connectWallet();
+    } else {
+        // If wallet is connected, proceed with funding
+        await fundProject();
+    }
+});
 
 document.getElementById('ethAmount').addEventListener('input', () => {
     if (userAddress && fundMeContract) {
@@ -813,20 +499,7 @@ document.getElementById('ethAmount').addEventListener('input', () => {
 // Check wallet on load
 window.addEventListener('load', async () => {
     console.log('Page loaded, initializing...');
-    
-    // Only load basic contract data (without requiring wallet connection)
     await loadContractData();
-    
-    // Optionally auto-connect if wallet was previously connected
-    // Uncomment the following lines if you want auto-reconnect functionality:
-    /*
-    if (typeof window.ethereum !== 'undefined') {
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-        if (accounts.length > 0) {
-            await connectWallet();
-        }
-    }
-    */
 });
 
 // Handle account changes
@@ -840,6 +513,7 @@ if (window.ethereum) {
     });
     
     window.ethereum.on('chainChanged', () => {
-        window.location.reload();
+        toast.info('Network changed. Refreshing page...', 'Network Change');
+        setTimeout(() => window.location.reload(), 2000);
     });
 }
