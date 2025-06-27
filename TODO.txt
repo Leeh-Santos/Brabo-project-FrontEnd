@@ -3,11 +3,12 @@
 
 *************BACK END CONTRACT EDITING*******************
 
-
 - DELETE ARRAY WHEN CALLING WITDRAW > - TOP CONTRIBUTERS SHOULD STAY AFTER CLEANING
 - FUND REVERTS WHEN THERE IS NO PIKATOKEN 
 - ADD PUBLIC VAR FOR TOTAL ETH AMOUNT ALREADY DONATED 
 
-
 **************************
 -test sending more than 2 nfts 
+
+- numero de funders para debugar
+- getter para has nft, tambem quantidades

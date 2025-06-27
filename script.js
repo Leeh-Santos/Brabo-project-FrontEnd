@@ -92,15 +92,53 @@ const toast = new ToastManager();
 // Contract instances
 let provider, signer, fundMeContract, nftContract, userAddress;
 
-// Connect wallet
-async function connectWallet() {
+// Check if wallet was previously connected
+async function checkWalletConnection() {
     try {
         if (typeof window.ethereum === 'undefined') {
-            toast.error('MetaMask is required to use this application. Please install MetaMask and try again.', 'Wallet Not Found');
-            return;
+            console.log('MetaMask not installed');
+            return false;
         }
 
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        // Check if user manually disconnected
+        const wasDisconnected = localStorage.getItem('walletDisconnected');
+        if (wasDisconnected === 'true') {
+            console.log('User previously disconnected, not auto-connecting');
+            return false;
+        }
+
+        // Check if we have permission to access accounts
+        const accounts = await window.ethereum.request({ 
+            method: 'eth_accounts' 
+        });
+        
+        if (accounts.length > 0) {
+            console.log('Wallet was previously connected, reconnecting...');
+            // Automatically reconnect
+            return await connectWallet(true); // true = silent connection
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('Error checking wallet connection:', error);
+        return false;
+    }
+}
+
+// Connect wallet
+async function connectWallet(silent = false) {
+    try {
+        if (typeof window.ethereum === 'undefined') {
+            if (!silent) {
+                toast.error('MetaMask is required to use this application. Please install MetaMask and try again.', 'Wallet Not Found');
+            }
+            return false;
+        }
+
+        // Request account access if not silent
+        if (!silent) {
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+        }
         
         provider = new ethers.providers.Web3Provider(window.ethereum);
         signer = provider.getSigner();
@@ -126,7 +164,12 @@ async function connectWallet() {
         fundBtn.textContent = 'Fund Project';
         fundBtn.disabled = false;
         
-        toast.success('Wallet connected successfully! You can now fund the project.', 'Connected');
+        if (!silent) {
+            toast.success('Wallet connected successfully! You can now fund the project.', 'Connected');
+        }
+        
+        // Clear disconnect flag when successfully connected
+        localStorage.removeItem('walletDisconnected');
         
         // Load data
         await loadUserData();
@@ -134,14 +177,26 @@ async function connectWallet() {
         
         // Listen to events
         listenToEvents();
+        
+        return true;
     } catch (error) {
         console.error('Error connecting wallet:', error);
-        toast.error('Failed to connect wallet. Please try again or check your wallet settings.', 'Connection Failed');
+        if (!silent) {
+            if (error.code === 4001) {
+                toast.error('Connection was rejected by user.', 'Connection Rejected');
+            } else {
+                toast.error('Failed to connect wallet. Please try again or check your wallet settings.', 'Connection Failed');
+            }
+        }
+        return false;
     }
 }
 
 // Disconnect wallet
 async function disconnectWallet() {
+    // Set disconnect flag to prevent auto-reconnection
+    localStorage.setItem('walletDisconnected', 'true');
+    
     userAddress = null;
     provider = null;
     signer = null;
@@ -513,6 +568,8 @@ function listenToEvents() {
 // Event listeners
 document.getElementById('connectBtn').addEventListener('click', async () => {
     if (!userAddress) {
+        // Clear disconnect flag when user manually connects
+        localStorage.removeItem('walletDisconnected');
         await connectWallet();
     }
 });
@@ -527,6 +584,8 @@ if (disconnectBtn) {
 document.getElementById('fundBtn').addEventListener('click', async () => {
     // If wallet is not connected, connect first
     if (!userAddress) {
+        // Clear disconnect flag when user manually connects
+        localStorage.removeItem('walletDisconnected');
         await connectWallet();
     } else {
         // If wallet is connected, proceed with funding
@@ -540,17 +599,26 @@ document.getElementById('ethAmount').addEventListener('input', () => {
     }
 });
 
-// Check wallet on load with better debugging
+// Check wallet connection on page load
 window.addEventListener('load', async () => {
     console.log('Page loaded, initializing...');
     console.log('Contract addresses:', CONTRACT_ADDRESSES);
     
-    // Always try to load basic contract data
+    // Check if wallet was previously connected
+    const wasConnected = await checkWalletConnection();
+    
+    // Always try to load basic contract data regardless of wallet connection
     try {
         await loadContractData();
         console.log('Contract data loaded successfully');
     } catch (error) {
         console.error('Failed to load contract data on page load:', error);
+    }
+    
+    if (wasConnected) {
+        console.log('Wallet automatically reconnected');
+    } else {
+        console.log('No previous wallet connection found');
     }
 });
 
@@ -558,8 +626,13 @@ window.addEventListener('load', async () => {
 if (window.ethereum) {
     window.ethereum.on('accountsChanged', async (accounts) => {
         if (accounts.length === 0) {
+            console.log('All accounts disconnected');
+            // Don't set disconnect flag for external disconnections
             await disconnectWallet();
-        } else {
+        } else if (userAddress && accounts[0].toLowerCase() !== userAddress.toLowerCase()) {
+            console.log('Account changed, reconnecting...');
+            // Clear disconnect flag when account changes (user is still actively using wallet)
+            localStorage.removeItem('walletDisconnected');
             await connectWallet();
         }
     });
