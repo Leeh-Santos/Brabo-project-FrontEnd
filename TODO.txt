@@ -1,14 +1,74 @@
-- connect with wallet accounts options
-- WALLET DISCONECTS ON REFRESH PAGE 
+- connect with wallet accounts options --no need 
+- WALLET DISCONECTS ON REFRESH PAGE  --- OK
 
 *************BACK END CONTRACT EDITING*******************
 
-- DELETE ARRAY WHEN CALLING WITDRAW > - TOP CONTRIBUTERS SHOULD STAY AFTER CLEANING
-- FUND REVERTS WHEN THERE IS NO PIKATOKEN 
-- ADD PUBLIC VAR FOR TOTAL ETH AMOUNT ALREADY DONATED 
+- DELETE ARRAY WHEN CALLING WITDRAW > - TOP CONTRIBUTERS SHOULD STAY AFTER CLEANING --- aparrantly ok
+- FUND REVERTS WHEN THERE IS NO PIKATOKEN  --- add more?
+- ADD PUBLIC VAR FOR TOTAL ETH AMOUNT ALREADY DONATED ---- ok 
 
 **************************
--test sending more than 2 nfts 
+-test sending more than 2 nfts --ok 
+- numero de funders para debugar --ok
 
-- numero de funders para debugar
+
+
 - getter para has nft, tambem quantidades
+
+
+**********************************************CONTRACT EDIT****************************************
+
+90 direcly to lp
+
+example: // Add these imports
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+
+contract FundMe {
+    IUniswapV2Router02 public immutable uniswapRouter;
+    address public immutable picaEthLP;
+    
+    uint256 public constant LP_PERCENTAGE = 10; // 10% to LP
+    
+    constructor(
+        address _priceFeed, 
+        address _picaToken,
+        address _moodNft,
+        address _uniswapRouter,
+        address _picaEthLP
+    ) {
+        // ... existing code ...
+        uniswapRouter = IUniswapV2Router02(_uniswapRouter);
+        picaEthLP = _picaEthLP;
+    }
+    
+    function fund() public payable {
+        require(msg.value.getConversionRate(priceFeed) >= MINIMUM_USD, "You need to spend more ETH!");
+        
+        uint256 ethValueInUsd = msg.value.getConversionRate(priceFeed);
+        
+        // Calculate amounts
+        uint256 ethForLP = (msg.value * LP_PERCENTAGE) / 100;
+        uint256 ethForUser = msg.value - ethForLP;
+        
+        // Calculate PICA tokens for user (based on remaining 90% ETH value)
+        uint256 userEthValueInUsd = (ethValueInUsd * 90) / 100;
+        uint256 picaTokenAmount = userEthValueInUsd; // 1:1 USD value
+        
+        // Add ETH to LP (this increases ETH reserves, making PICA more valuable)
+        addEthToLP(ethForLP);
+        
+        // Rest of your existing logic for NFTs, tracking, etc.
+        // ... existing code ...
+        
+        emit Funded(msg.sender, msg.value, picaTokenAmount);
+    }
+    
+    function addEthToLP(uint256 ethAmount) internal {
+        // Send ETH directly to LP pair to increase reserves
+        (bool success,) = payable(picaEthLP).call{value: ethAmount}("");
+        require(success, "LP funding failed");
+        
+        // Sync the pair to update reserves
+        IUniswapV2Pair(picaEthLP).sync();
+    }
+}
