@@ -11,7 +11,7 @@
 -test sending more than 2 nfts --ok 
 - numero de funders para debugar --ok
 
-
+    
 
 - getter para has nft, tambem quantidades
 
@@ -72,3 +72,4 @@ contract FundMe {
         IUniswapV2Pair(picaEthLP).sync();
     }
 }
+
