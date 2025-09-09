@@ -249,11 +249,11 @@ async function loadUserData() {
         
         // Update tier
         let tier = '-';
-        if (contributionNum >= 1000) {
+        if (contributionNum >= 0.5) {
             tier = 'Gold';
-        } else if (contributionNum >= 100) {
+        } else if (contributionNum >= 0.4) {
             tier = 'Silver';
-        } else if (contributionNum >= 10) {
+        } else if (contributionNum >= 0.2) {
             tier = 'Bronze';
         }
         document.getElementById('currentTier').textContent = tier;
@@ -274,7 +274,7 @@ async function loadContractData() {
             // Try to create a public provider - adjust RPC URL based on your network
             try {
                 // For Ethereum mainnet - replace with your network's RPC
-                currentProvider = new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/bddd97b7f8ea4428bc578c31798385da');
+                currentProvider = new ethers.providers.JsonRpcProvider('https://base-mainnet.infura.io/v3/bddd97b7f8ea4428bc578c31798385da');
                 
                 await currentProvider.getNetwork();
             } catch (e) {
@@ -519,19 +519,19 @@ function updateTierHighlight(contributionUsd) {
     });
     
     // Add active state to current tier
-    if (contributionUsd >= 1000) {
+    if (contributionUsd >= 0.5) {
         const goldTier = document.getElementById('goldTier');
         if (goldTier) {
             goldTier.style.transform = 'translateY(-5px)';
             goldTier.style.border = '1px solid #ffd700';
         }
-    } else if (contributionUsd >= 100) {
+    } else if (contributionUsd >= 0.4) {
         const silverTier = document.getElementById('silverTier');
         if (silverTier) {
             silverTier.style.transform = 'translateY(-5px)';
             silverTier.style.border = '1px solid #c0c0c0';
         }
-    } else if (contributionUsd >= 10) {
+    } else if (contributionUsd >= 0.2) {
         const bronzeTier = document.getElementById('bronzeTier');
         if (bronzeTier) {
             bronzeTier.style.transform = 'translateY(-5px)';
@@ -563,8 +563,8 @@ function listenToEvents() {
         if (user.toLowerCase() === userAddress.toLowerCase()) {
             const fundingInDollars = totalFundingUsd.toNumber() / 1e18;
             let newTier = 'Bronze';
-            if (fundingInDollars >= 1000) newTier = 'Gold';
-            else if (fundingInDollars >= 100) newTier = 'Silver';
+            if (fundingInDollars >= 0.5) newTier = 'Gold';
+            else if (fundingInDollars >= 0.4) newTier = 'Silver';
             
             toast.success(`Your NFT has been upgraded to ${newTier} tier! 🎊`, 'Tier Upgraded');
             await loadUserData();
