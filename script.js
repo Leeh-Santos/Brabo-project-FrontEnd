@@ -420,28 +420,35 @@ async function calculateRewards() {
     
     try {
         const ethValue = ethers.utils.parseEther(ethAmount);
-        const picaReward = await fundMeContract.calculatePicaTokenReward(ethValue);
+        
+        const [baseTokens, bonusTokens, picaReward] = await fundMeContract.calculateUserReward(userAddress, ethValue);
         
         const picaRewardNum = picaReward.toNumber();
-        const usdValue = picaRewardNum / 2;
+        bonusTokens = bonusTokens.toNumber();
+
+        const picaPrice = await fundMeContract.getPicaPriceFromLP(); // if this exists
+        const picaAmount = parseFloat(ethers.utils.formatEther(picaReward));
+        const usdValue = (picaAmount * picaPrice) / 1e18;
         
         document.getElementById('picaReward').textContent = 
             picaRewardNum.toFixed(6) + ' PICA';
         document.getElementById('usdValue').textContent = '$' + usdValue.toFixed(2);
+        document.getElementById('nftBonus').textContent = bonusTokens.toFixed(6) + ' PICA';
+
         
         // NFT preview
         const currentContribution = await fundMeContract.getHowMuchDudeFundedInUsdActual(userAddress);
         const totalAfterFunding = currentContribution.toNumber() + usdValue;
         
         let nftStatus = '';
-        if (currentContribution.toNumber() < 10 && totalAfterFunding >= 10) {
+        if (currentContribution.toNumber() < 0.2 && totalAfterFunding >= 0.2) {
             nftStatus = '🎉 You will receive your first NFT!';
-        } else if (totalAfterFunding >= 1000 && currentContribution.toNumber() < 1000) {
+        } else if (totalAfterFunding >= 0.5 && currentContribution.toNumber() < 0.5) {
             nftStatus = '⬆️ Upgrade to GOLD tier!';
-        } else if (totalAfterFunding >= 100 && currentContribution.toNumber() < 100) {
+        } else if (totalAfterFunding >= 0.4 && currentContribution.toNumber() < 0.4) {
             nftStatus = '⬆️ Upgrade to SILVER tier!';
-        } else if (totalAfterFunding < 10) {
-            const needed = 10 - totalAfterFunding;
+        } else if (totalAfterFunding < 0.2) {
+            const needed = 0.2 - totalAfterFunding;
             nftStatus = `Need $${needed.toFixed(2)} more for NFT`;
         } else {
             nftStatus = '✓ Maintaining current tier';
